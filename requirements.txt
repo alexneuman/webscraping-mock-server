@@ -1,0 +1,9 @@
+bcrypt
+fastapi[standard]
+uvicorn
+sqlalchemy
+pyjwt
+sqlmodel
+asyncpg
+debugpy
+jinja2
