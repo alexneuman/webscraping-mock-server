@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: static-file-server
+  namespace: static-file-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: static-file-server
+  template:
+    metadata:
+      labels:
+        app: static-file-server
+    spec:
+      containers:
+      - name: static-file-server
+        image: static-file-server:latest
+        ports:
+        - containerPort: 80

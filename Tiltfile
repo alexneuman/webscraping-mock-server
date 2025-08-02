@@ -35,8 +35,8 @@ k8s_yaml('helm-charts/backend/templates/01-namespace.yaml')
 
 docker_build(
     'backend',
-    context='.',
-    dockerfile='Dockerfile',
+    context='./backend',
+    dockerfile='./backend/Dockerfile',
     live_update=[
         sync('./backend', '/app'),
         run('pip install --no-cache-dir -r requirements.txt', trigger=['requirements.txt']),
@@ -45,7 +45,11 @@ docker_build(
 
 
 # Load Kubernetes YAML
-k8s_yaml(['helm-charts/backend/templates/deployment.yaml', 'helm-charts/backend/templates/service.yaml'])
+k8s_yaml([
+    'helm-charts/backend/templates/deployment.yaml',
+    'helm-charts/backend/templates/service.yaml',
+    'helm-charts/backend/templates/ingress.yaml',
+    ])
 k8s_resource('backend',
              # map one or more local ports to ports on your Pod
              port_forwards=['8000:8000', "5678:5678"],
@@ -56,4 +60,52 @@ k8s_resource('backend',
              # alter envs
             #  resource_deps=['ingress-nginx-controller', 'cert-manager'],
             
+)
+
+
+docker_build(
+    'static-file-server',
+    context='.',
+    dockerfile='./static-file-server/Dockerfile',
+    live_update=[
+        # sync('./backend', '/app'),
+        # run('pip install --no-cache-dir -r requirements.txt', trigger=['requirements.txt']),
+    ]
+    )
+k8s_yaml([
+    'helm-charts/static-file-server/templates/01-namespace.yaml',
+    'helm-charts/static-file-server/templates/deployment.yaml',
+    'helm-charts/static-file-server/templates/service.yaml',
+    'helm-charts/static-file-server/templates/ingress.yaml',
+    ])
+k8s_resource('static-file-server',
+             # map one or more local ports to ports on your Pod
+             port_forwards=['8080:80'],
+             # change whether the resource is started by default
+             auto_init=False,
+             # control whether the resource automatically updates
+             trigger_mode=TRIGGER_MODE_AUTO,
+            #  resource_deps=['ingress-nginx-controller', 'cert-manager'],
+)
+
+# Ingress Nginx
+
+helm_resource(
+    name='ingress-nginx-controller',
+    chart='ingress-nginx/ingress-nginx',
+    namespace='ingress-nginx',
+    flags=[
+        '--create-namespace',
+
+        ],
+)
+
+k8s_resource('ingress-nginx-controller',
+             # map one or more local ports to ports on your Pod
+             port_forwards=['8082:80', '8443:443'],
+             # change whether the resource is started by default
+             auto_init=False,
+             # control whether the resource automatically updates
+             trigger_mode=TRIGGER_MODE_AUTO,
+            #  resource_deps=['cert-manager'],
 )
