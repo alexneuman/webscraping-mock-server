@@ -1,0 +1,17 @@
+<div id="pagination">
+    {% if current_page > 1 %}
+      <a href="?offset={{ (current_page - 2) * limit }}&limit={{ limit }}">«</a>
+    {% endif %}
+
+    {% for i in range(start_page, end_page + 1) %}
+      {% if i == current_page %}
+        <strong>{{ i }}</strong>
+      {% else %}
+        <a href="?offset={{ (i - 1) * limit }}&limit={{ limit }}">{{ i }}</a>
+      {% endif %}
+    {% endfor %}
+
+    {% if current_page < max_pages %}
+      <a href="?offset={{ current_page * limit }}&limit={{ limit }}">»</a>
+    {% endif %}
+  </div>

@@ -1,20 +1,26 @@
 
 from pathlib import Path
+from math import ceil
 import os
 from typing import Tuple, Optional, List, Union, Iterable
 
 from fastapi import FastAPI, Depends, Request, Query
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.exceptions import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+# from fastapi_pagination.ext.sqlalchemy import paginate
+from sqlalchemy.orm import selectinload
+from sqlalchemy import func
 from sqlmodel import select
 from db.db import init_db, get_session, is_initialized
-from models.product import Product
+from models.product import Product, ProductGet
 from models.category import Category, CategoryGet
 from models.many_to_many import ProductCategoryLink
 
-from utils.database_utils import assign_n_uneven_categories_by_index, get_fake_categories
+from utils.database_utils import assign_n_uneven_categories_by_index, get_fake_categories, generate_fake_price
+from utils.pagination import enforce_max_total
 
 # from auth import create_access_token, authenticate_user
 
@@ -57,8 +63,10 @@ async def on_startup():
                     description='',
                     file_path= str(Path('/static/images') / Path('products') / f'{i}.jpg')
                 )
+                price = generate_fake_price(i, num_images, max_price=20000)
                 categories = assign_n_uneven_categories_by_index(i=i, categories=created_categories, n=3)
                 product.categories = categories
+                product.price = price
                 session.add(product)
             await session.commit()
     except Exception as e:
@@ -109,20 +117,61 @@ async def querytest(session = Depends(get_session)):
     prods = result.scalars().all()
     return prods
 
+# @app.get('/products')
+# async def list_products(
+#     request: Request,
+#     offset: int = Query(0, ge=0), 
+#     limit: int = Query(10, ge=1, le=25), 
+#     session = Depends(get_session)
+# ):
+#     stmt = select(Product).offset(offset).limit(limit)
+#     result = await session.execute(stmt)
+#     products = result.scalars().all()
+#     return templates.TemplateResponse(
+#         'products-list.html',
+#         {'products': products, 'request': request}
+#     )
+
 @app.get('/products')
 async def list_products(
     request: Request,
     offset: int = Query(0, ge=0), 
-    limit: int = Query(10, ge=1, le=25), 
+    limit: int = Query(10, ge=1, le=25),  # limit must be ≥ 1
     session = Depends(get_session)
 ):
+    pagination_total = 5000
+    enforce_max_total(offset, limit, pagination_total)
+
+    # Fetch paginated products
     stmt = select(Product).offset(offset).limit(limit)
     result = await session.execute(stmt)
     products = result.scalars().all()
+
+    # Count total products in DB
+    total_stmt = select(func.count()).select_from(Product)
+    total_db = await session.scalar(total_stmt)
+    
+    total = min(total_db, pagination_total)
+    max_pages = ceil(total / limit) if total > 0 else 1
+    current_page = (offset // limit) + 1
+
+    # Compute safe start/end page for pagination
+    start_page = max(1, current_page - 2)
+    end_page = min(max_pages, current_page + 2)
+
     return templates.TemplateResponse(
         'products-list.html',
-        {'products': products, 'request': request}
+        {
+            'request': request,
+            'products': products,
+            'current_page': current_page,
+            'max_pages': max_pages,
+            'start_page': start_page,
+            'end_page': end_page,
+            'limit': limit
+        }
     )
+
 
 @app.get('/categoriesforproduct/{product_id}')
 async def get_categories_for_product(product_id: int, session = Depends(get_session)) -> list[CategoryGet]:
@@ -132,3 +181,30 @@ async def get_categories_for_product(product_id: int, session = Depends(get_sess
     result = await session.execute(stmt)
     return result.scalars().all()
     
+
+@app.get("/productwithcategories/{product_id}")
+async def get_product_with_categories(
+    product_id: int,
+    session=Depends(get_session),
+):
+    stmt = (
+        select(Product)
+        .where(Product.id == product_id)
+        .options(selectinload(Product.categories))
+    )
+    result = await session.execute(stmt)
+    product = result.scalars().first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product
+
+
+@app.get('/productswithcategories2')
+async def get_product_with_categories_2(
+    product_ids: list[int] = Query(...),
+    session=Depends(get_session)
+) -> list[Product]:
+    stmt = select(Product).where(Product.id.in_(product_ids)).options(selectinload(Product.categories))
+    results = await session.execute(stmt)
+    products = results.unique().scalars().all()
+    return products

@@ -1,4 +1,6 @@
 
+from decimal import Decimal
+
 from models.category import Category
 
 pseudo_brand_names = [
@@ -43,24 +45,6 @@ psuedo_categories = [
     "Non-Profit & Charity"
 ]
 
-def assign_categories(items, categories):
-    assignments = []
-    for i, item in enumerate(items):
-        # Use a skewed formula to create uneven distribution
-        mod = i % 10
-        if mod in (0, 1):
-            cat_index = 0
-        elif mod in (2, 3):
-            cat_index = len(categories) // 3
-        elif mod == 4:
-            cat_index = len(categories) // 2
-        elif mod in (5, 6, 7):
-            cat_index = (2 * len(categories)) // 3
-        else:
-            cat_index = len(categories) - 1
-        assignments.append((item, categories[cat_index]))
-    return assignments
-
 def assign_n_uneven_categories_by_index(i, categories, n) -> list[Category]:
     """
         A function that arbitrarily, deterministically adds categories to products
@@ -84,3 +68,26 @@ def assign_n_uneven_categories_by_index(i, categories, n) -> list[Category]:
 
 def get_fake_categories() -> list[Category]:
     return [ Category(name=c) for c in psuedo_categories]
+
+import hashlib
+
+def generate_fake_price(index: int, total_items: int, min_price: float = 500.0, max_price: float = 20000.0) -> Decimal:
+    """
+    Generate a deterministic, irregular fake price based on index using hashing.
+    Not linear, not curved, but stable and within bounds.
+    """
+    # Clamp index
+    index = max(0, min(index, total_items - 1))
+
+    # Hash the index (convert to bytes)
+    hash_bytes = hashlib.sha256(str(index).encode()).digest()
+
+    # Take first 4 bytes to get a pseudo-random int
+    raw_int = int.from_bytes(hash_bytes[:4], 'big')
+
+    # Normalize to a 0–1 float
+    normalized = raw_int / 0xFFFFFFFF
+
+    # Scale to price range
+    price = min_price + normalized * (max_price - min_price)
+    return Decimal(round(price, 2))
