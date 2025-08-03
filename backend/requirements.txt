@@ -7,3 +7,4 @@ sqlmodel
 asyncpg
 debugpy
 jinja2
+python-slugify

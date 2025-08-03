@@ -30,26 +30,44 @@ settings.update(read_json(
 
 load('ext://helm_resource', 'helm_resource', 'helm_repo')
 
-k8s_yaml('helm-charts/backend/templates/01-namespace.yaml')
+# Database
 
+k8s_yaml([
+    'helm-charts/database/templates/01-namespace.yaml',
+    'helm-charts/database/templates/deployment.yaml',
+    'helm-charts/database/templates/service.yaml'
+])
+
+k8s_resource(
+    'database',
+    port_forwards=['5432:5432'],
+    auto_init=True,
+    trigger_mode=TRIGGER_MODE_AUTO
+)
+
+k8s_yaml([
+    'helm-charts/backend/templates/01-namespace.yaml',
+    'helm-charts/backend/templates/deployment.yaml',
+    'helm-charts/backend/templates/service.yaml',
+    'helm-charts/backend/templates/ingress.yaml',
+    ])
 
 docker_build(
     'backend',
     context='./backend',
     dockerfile='./backend/Dockerfile',
     live_update=[
-        sync('./backend', '/app'),
-        run('pip install --no-cache-dir -r requirements.txt', trigger=['requirements.txt']),
-    ]
+        sync('./backend/', '/app'),
+        run('pip install --no-cache-dir -r requirements.txt', trigger=['./backend/requirements.txt']),
+    ],
+    build_args={
+        'DATABASE_URL': 'postgresql+asyncpg://postgres:postgres@database.database.svc.cluster.local:5432/foo'
+    }
     )
 
 
 # Load Kubernetes YAML
-k8s_yaml([
-    'helm-charts/backend/templates/deployment.yaml',
-    'helm-charts/backend/templates/service.yaml',
-    'helm-charts/backend/templates/ingress.yaml',
-    ])
+
 k8s_resource('backend',
              # map one or more local ports to ports on your Pod
              port_forwards=['8000:8000', "5678:5678"],
@@ -65,12 +83,11 @@ k8s_resource('backend',
 
 docker_build(
     'static-file-server',
-    context='.',
+    context='./static-file-server',
     dockerfile='./static-file-server/Dockerfile',
-    live_update=[
-        # sync('./backend', '/app'),
-        # run('pip install --no-cache-dir -r requirements.txt', trigger=['requirements.txt']),
-    ]
+    # live_update=[
+    #     sync('./static', '/usr/share/nginx/html/static')
+    # ]
     )
 k8s_yaml([
     'helm-charts/static-file-server/templates/01-namespace.yaml',
