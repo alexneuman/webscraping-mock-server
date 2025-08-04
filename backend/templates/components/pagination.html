@@ -1,17 +1,43 @@
+{% macro url_with_offset(new_offset) -%}
+  {% set updated_params = [] %}
+  {% for key, value in request.query_params.items() %}
+    {% if key != 'offset' and key != 'limit' %}
+      {% set _ = updated_params.append(key ~ '=' ~ value) %}
+    {% endif %}
+  {% endfor %}
+  {% set _ = updated_params.append('offset=' ~ new_offset) %}
+  {% set _ = updated_params.append('limit=' ~ limit) %}
+  {{ '?' ~ '&'.join(updated_params) }}
+{%- endmacro %}
+
 <div id="pagination">
-    {% if current_page > 1 %}
-      <a href="?offset={{ (current_page - 2) * limit }}&limit={{ limit }}">«</a>
-    {% endif %}
+  {% if current_page > 1 %}
+    <a href="{{ url_with_offset((current_page - 2) * limit) }}">«</a>
+  {% endif %}
 
-    {% for i in range(start_page, end_page + 1) %}
-      {% if i == current_page %}
-        <strong>{{ i }}</strong>
-      {% else %}
-        <a href="?offset={{ (i - 1) * limit }}&limit={{ limit }}">{{ i }}</a>
-      {% endif %}
-    {% endfor %}
+  {% if start_page > 2 %}
+    <a href="{{ url_with_offset(0) }}">1</a>
+    <span>...</span>
+  {% elif start_page == 2 %}
+    <a href="{{ url_with_offset(0) }}">1</a>
+  {% endif %}
 
-    {% if current_page < max_pages %}
-      <a href="?offset={{ current_page * limit }}&limit={{ limit }}">»</a>
+  {% for i in range(start_page, end_page + 1) %}
+    {% if i == current_page %}
+      <strong>{{ i }}</strong>
+    {% else %}
+      <a href="{{ url_with_offset((i - 1) * limit) }}">{{ i }}</a>
     {% endif %}
-  </div>
+  {% endfor %}
+
+  {% if end_page < max_pages - 1 %}
+    <span>...</span>
+    <a href="{{ url_with_offset((max_pages - 1) * limit) }}">{{ max_pages }}</a>
+  {% elif end_page == max_pages - 1 %}
+    <a href="{{ url_with_offset((max_pages - 1) * limit) }}">{{ max_pages }}</a>
+  {% endif %}
+
+  {% if current_page < max_pages %}
+    <a href="{{ url_with_offset(current_page * limit) }}">»</a>
+  {% endif %}
+</div>

@@ -1,4 +1,6 @@
 
+import hashlib
+import string
 from decimal import Decimal
 
 from models.category import Category
@@ -69,7 +71,6 @@ def assign_n_uneven_categories_by_index(i, categories, n) -> list[Category]:
 def get_fake_categories() -> list[Category]:
     return [ Category(name=c) for c in psuedo_categories]
 
-import hashlib
 
 def generate_fake_price(index: int, total_items: int, min_price: float = 500.0, max_price: float = 20000.0) -> Decimal:
     """
@@ -91,3 +92,56 @@ def generate_fake_price(index: int, total_items: int, min_price: float = 500.0, 
     # Scale to price range
     price = min_price + normalized * (max_price - min_price)
     return Decimal(round(price, 2))
+
+def generate_fake_price(index: int, total_items: int, min_price: float = 500.0, max_price: float = 20000.0) -> Decimal:
+    """
+    Generate a deterministic, irregular fake price based on index using hashing.
+    Not linear, not curved, but stable and within bounds.
+    """
+    # Clamp index
+    index = max(0, min(index, total_items - 1))
+
+    # Hash the index (convert to bytes)
+    hash_bytes = hashlib.sha256(str(index).encode()).digest()
+
+    # Take first 4 bytes to get a pseudo-random int
+    raw_int = int.from_bytes(hash_bytes[:4], 'big')
+
+    # Normalize to a 0–1 float
+    normalized = raw_int / 0xFFFFFFFF
+
+    # Scale to price range
+    price = min_price + normalized * (max_price - min_price)
+    return Decimal(round(price, 2))
+
+
+def generate_fake_string(index: int, total_items: int, length: int = 10, alphabet: str = string.ascii_letters + string.digits) -> str:
+    """
+    Generate a deterministic arbitrary string of given length based on index using hashing.
+    The string is composed of characters from the given alphabet.
+    """
+    # Clamp index
+    index = max(0, min(index, total_items - 1))
+
+    # Hash the index to get a byte stream
+    hash_bytes = hashlib.sha256(str(index).encode()).digest()
+
+    result_chars = []
+    alphabet_len = len(alphabet)
+
+    # We may need more bytes than 32 for longer strings, so extend by hashing with salt
+    i = 0
+    while len(result_chars) < length:
+        # If we've used all bytes from the current hash_bytes, hash again with a salt
+        if i * 4 + 4 > len(hash_bytes):
+            hash_bytes = hashlib.sha256(hash_bytes + b'salt').digest()
+            i = 0
+
+        # Take 4 bytes, convert to int, and mod by alphabet length to pick a character
+        chunk = hash_bytes[i * 4 : i * 4 + 4]
+        raw_int = int.from_bytes(chunk, 'big')
+        char = alphabet[raw_int % alphabet_len]
+        result_chars.append(char)
+        i += 1
+
+    return ''.join(result_chars).lower()

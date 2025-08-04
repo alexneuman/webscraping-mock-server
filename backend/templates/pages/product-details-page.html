@@ -1,0 +1,6 @@
+<div id="product-details">
+    <img src="{{static_url}}{{product.file_path}}" alt="{{product.name}} Image" />
+    <h2>{{ product.name }}</h2>
+    <p><strong>Price:</strong> ${{product.price | round(2) }}</p>
+    <p>{{product.description}}</p>
+</div>
