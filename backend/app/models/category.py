@@ -4,7 +4,7 @@ from slugify import slugify
 from sqlalchemy import event
 from sqlmodel import SQLModel, Field, Relationship
 from pydantic import FilePath, field_validator
-from models.many_to_many import ProductCategoryLink
+from app.models.many_to_many import ProductCategoryLink
 
 class Category(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

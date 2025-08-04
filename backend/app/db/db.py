@@ -6,7 +6,8 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 from sqlalchemy import inspect
 
-from models import *
+from app.db.base import metadata
+from app.models.category import Category
 from sqlmodel import SQLModel
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel

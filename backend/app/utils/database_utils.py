@@ -3,7 +3,7 @@ import hashlib
 import string
 from decimal import Decimal
 
-from models.category import Category
+from app.models.category import Category
 
 pseudo_brand_names = [
     "Zenvana", "Frostiq", "Lumeno", "Driftory", "Nexora", "Snappi", "Veltrix",

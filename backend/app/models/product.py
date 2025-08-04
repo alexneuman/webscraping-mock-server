@@ -2,8 +2,8 @@ from decimal import Decimal
 from typing import Optional, List
 
 from sqlmodel import SQLModel, Field, Relationship
-from models.category import Category, CategoryGet
-from models.many_to_many import ProductCategoryLink
+from app.models.category import Category, CategoryGet
+from app.models.many_to_many import ProductCategoryLink
 from pydantic import FilePath
 
 class Product(SQLModel, table=True):

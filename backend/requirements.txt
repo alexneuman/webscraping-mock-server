@@ -9,3 +9,5 @@ debugpy
 jinja2
 python-slugify
 fastapi-pagination
+alembic
+psycopg2-binary

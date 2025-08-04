@@ -14,13 +14,14 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import selectinload
 from sqlalchemy import func
 from sqlmodel import select
-from db.db import init_db, get_session, is_initialized
-from models.product import Product, ProductGet
-from models.category import Category, CategoryGet
-from models.many_to_many import ProductCategoryLink
+from app.db.db import init_db, get_session, is_initialized
+from app.models.product import Product, ProductGet
+from app.models.category import Category, CategoryGet
+from app.models.many_to_many import ProductCategoryLink
 
-from utils.database_utils import assign_n_uneven_categories_by_index, get_fake_categories, generate_fake_price, generate_fake_string
-from utils.pagination import enforce_max_total
+from app.utils.database_utils import assign_n_uneven_categories_by_index, get_fake_categories, generate_fake_price, generate_fake_string
+from app.utils.pagination import enforce_max_total
+from app.utils.dummy_data import generate_dummy_data
 
 # from auth import create_access_token, authenticate_user
 
@@ -43,36 +44,11 @@ app.add_middleware(
     allow_headers=['*'],
 )
 
-@app.on_event("startup")
+# @app.on_event("startup")
 async def on_startup():
-    print('bob')
-    try:
-        x = await is_initialized()
-        if x == True:
-            return
-        await init_db()
-
-        print('initialized database')
-        num_images = 50000
-        created_categories = get_fake_categories()
-        async for session in get_session():
-            session.add_all(created_categories)
-            for i in range(1, num_images+1):
-                product = Product(
-                    description='',
-                    file_path= str(Path('/static/images') / Path('products') / f'{i}.jpg')
-                )
-                suffix = generate_fake_string(i, num_images)
-                price = generate_fake_price(i, num_images, max_price=20000)
-                categories = assign_n_uneven_categories_by_index(i=i, categories=created_categories, n=3)
-                product.categories = categories
-                product.price = price
-                product.name=f'product {i} {suffix}'
-                product.slug = product.name.replace(' ', '-')
-                session.add(product)
-            await session.commit()
-    except Exception as e:
-        raise NotImplemented(e)
+    await init_db()
+    await generate_dummy_data()
+  
 
 @app.get('/hello')
 def hello():

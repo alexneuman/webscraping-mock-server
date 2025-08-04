@@ -13,15 +13,30 @@ spec:
       labels:
         app: backend
     spec:
+      initContainers:
+        - name: migrate
+          image: backend:latest
+          command: ["alembic", "upgrade", "head"]
+          # command: ["sleep", "inf"]
+          env:
+            - name: DATABASE_URL
+              value: "postgresql+asyncpg://postgres:postgres@database.database.svc.cluster.local:5432/foo"
+            - name: SECRET_KEY
+              value: "mysecret"
+        - name: seed
+          image: backend:latest
+          command: ["app/init_dummy_data.sh"]
+          env:
+            - name: DATABASE_URL
+              value: "postgresql+asyncpg://postgres:postgres@database.database.svc.cluster.local:5432/foo"
+
       containers:
         - name: backend
           image: backend:latest
           ports:
             - containerPort: 8000
           env:
-            # - name: DATABASE_URL
-            #   value: "postgresql+asyncpg://postgres:postgres@database:5432/foo"
+          #   - name: DATABASE_URL
+          #     value: "postgresql+asyncpg://postgres:postgres@database:5432/foo"
             - name: SECRET_KEY
               value: "mysecret"
-            # - name: ENV
-            #   value: development
