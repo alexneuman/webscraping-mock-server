@@ -10,7 +10,6 @@ from app.db.base import metadata
 from app.models.category import Category
 from sqlmodel import SQLModel
 from sqlalchemy.orm import sessionmaker
-from sqlmodel import SQLModel
 
 
 DATABASE_URL = os.environ.get('DATABASE_URL')

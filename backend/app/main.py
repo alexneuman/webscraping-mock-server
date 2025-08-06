@@ -2,7 +2,7 @@
 from pathlib import Path
 from math import ceil
 import os
-from typing import Tuple, Optional, List, Union, Iterable
+from typing import Tuple, Optional, List, Union, Iterable, Annotated
 
 from fastapi import FastAPI, Depends, Request, Query
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -115,6 +115,18 @@ async def get_all_categories(
     categories = results.scalars().all()
     return categories
 
+# def parse_float(request: Request) -> float | None:
+#     value = request.query_params.get("price_low")
+#     if value == "":
+#         return 0.0
+#     if value is None:
+#         return None
+#     try:
+#         return float(value)
+#     except ValueError:
+#         raise ValueError(f"Invalid float value: {value}")
+    
+
 @app.get('/products')
 async def list_products(
     request: Request,
@@ -122,15 +134,25 @@ async def list_products(
     limit: int = Query(10, ge=1, le=25),  # limit must be ≥ 1
     session = Depends(get_session),
     category_name: None|str = Query(None, alias='category'),
-    categories = Depends(get_all_categories)
+    categories = Depends(get_all_categories),
+    # price_low: Optional[float | str | float] = None,
+    price_low: float|None = Query(None, ge=0.0, description="Minimum price filter"),
+    price_high: float | None = Query(None, ge=0.0, description="Maximum price filter"),
     # category: Category|None = Depends(get_category)
 ):
+    # if price_low is not None and price_high is not None and price_low > price_high:
+    #     raise HTTPException(status_code=400, detail="price_low cannot be greater than price_high")
     stmt = select(Product).offset(offset).limit(limit)
     if category_name:
         # stmt = stmt.where(Category.slug == category_name)
         stmt = stmt.join(Product.categories).where(Category.slug == category_name)
     pagination_total = 5000
     enforce_max_total(offset, limit, pagination_total)
+
+    if price_low is not None:
+        stmt = stmt.where(Product.price >= price_low)
+    if price_high is not None:
+        stmt = stmt.where(Product.price <= price_high)
 
     # Fetch paginated products
     
@@ -145,6 +167,12 @@ async def list_products(
         .join(Product.categories)
         .where(Category.slug == category_name)
     )
+
+    if price_low is not None:
+        total_stmt = total_stmt.where(Product.price >= price_low)
+    if price_high is not None:
+        total_stmt = total_stmt.where(Product.price <= price_high)
+
     total_db = await session.scalar(total_stmt)
     
     total = min(total_db, pagination_total)

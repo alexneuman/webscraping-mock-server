@@ -1,0 +1,48 @@
+<form action="{{ request.url.path }}" method="get">
+  <!-- Preserve existing query parameters -->
+  {% for key, value in request.query_params.items() %}
+    {% if key not in ['price_low', 'price_high'] %}
+      <input type="hidden" name="{{ key }}" value="{{ value }}">
+    {% endif %}
+  {% endfor %}
+
+  <label>
+    Price Low:
+    <input type="number" name="price_low" min="0">
+  </label>
+  <label>
+    Price High:
+    <input type="number" name="price_high" min="0">
+  </label>
+  <button type="submit">Search</button>
+</form>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const form = document.querySelector("form");
+
+    form.addEventListener("submit", (event) => {
+      const inputs = form.querySelectorAll("input[type='number'][name]");
+      let hasValue = false;
+
+      inputs.forEach((input) => {
+        if (input.value !== "" && input.value !== null) {
+          hasValue = true;
+        }
+      });
+
+      if (!hasValue) {
+        event.preventDefault(); // Stop the form from submitting
+        alert("Please fill in at least one field before submitting.");
+        return;
+      }
+
+      // Remove empty inputs so they are not submitted
+      inputs.forEach((input) => {
+        if (input.value === "" || input.value === null) {
+          input.remove();
+        }
+      });
+    });
+  });
+</script>
